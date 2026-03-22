@@ -1,4 +1,5 @@
 import type { CommandDefinition, ShortcutDefinition } from './definition'
+import { fuzzyFilter } from './fuzzy'
 
 export class CommandService {
   private commands: Map<string, CommandDefinition> = new Map()
@@ -37,6 +38,17 @@ export class CommandService {
 
   getRegisteredCommands(): CommandDefinition[] {
     return Array.from(this.commands.values())
+  }
+
+  // Basic search support (optional context)
+  searchCommands(query: string, context?: any): CommandDefinition[] {
+    let list = this.getRegisteredCommands()
+    if (context && typeof (this as any).shouldShowContext === 'function') {
+      // if there is a global context filter, apply it per command
+      list = list.filter((cmd) => (cmd.shouldShow ? cmd.shouldShow(context) : true))
+    }
+    if (!query) return list
+    return fuzzyFilter(query, list)
   }
 
   // Shortcuts API
