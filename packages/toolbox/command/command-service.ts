@@ -1,11 +1,17 @@
 import type { CommandDefinition, ShortcutDefinition } from './definition'
 import { fuzzyFilter } from './fuzzy'
+import CommandHistoryStore from './history.js'
 
 export class CommandService {
   private commands: Map<string, CommandDefinition> = new Map()
   private shortcuts: Map<string, string> = new Map() // keys -> commandId
   private contextSubscribers: Array<(ctx: any) => void> = []
   private currentContext: any = null
+  private history: CommandHistoryStore
+
+  constructor() {
+    this.history = new CommandHistoryStore()
+  }
 
   // Commands API
   registerCommand(
@@ -79,5 +85,24 @@ export class CommandService {
   updateContext(ctx: any): void {
     this.currentContext = ctx
     for (const cb of this.contextSubscribers) cb(ctx)
+  }
+
+  // Execute a registered command by id
+  async runCommand(id: string, args?: any): Promise<void> {
+    const cmd = this.commands.get(id)
+    if (!cmd) throw new Error(`Command not found: ${id}`)
+    const result = cmd.action?.(args)
+    await Promise.resolve(result)
+    // record in history after successful run
+    try {
+      this.history.add(id)
+    } catch {
+      // ignore history write errors
+    }
+  }
+
+  // Expose history (for tests/debugging)
+  getHistory(): string[] {
+    return this.history.getAll()
   }
 }
