@@ -1,46 +1,42 @@
 # API: CommandService и команды
 
-Цель: определить контракт для регистрации команд, горячих клавиш и навигации внутри TiniJS.
+Цель: определить контракт регистрации команд, горячих клавиш и навигации внутри TiniJS.
 
-1. CommandService (пакет @tinijs/toolbox)
-- Методы регистрации:
-  - registerCommand(id: string, name: string, description?: string, icon?: string, action: (args?: any) => Promise<void> | void, keywords?: string[]): void
-- Регистрация и удаление команд по id: unregisterCommand(id: string): void
-- Группировка команд по категориям: { id, label, commands: string[] }
-- Условия отображения команд: shouldShow(commandId, context): boolean
-- Получение зарегистрированных команд: getRegisteredCommands(): CommandDefinition[]
-- Регистрация и отмена регистрации контекст-зависимых команд (subscribeContext/context$)
-- Архитектура: Commands хранится в store (state) и обновляется по регистрации/удалению
-
-- Регистрация горячих клавиш (hotkeys):
-  - registerShortcut(keys: string, commandId: string, preventDefault?: boolean): void
-- Поддержка последовательностей клавиш и модификаторов: Ctrl, Alt, Shift, Meta, и т.д.
-- Обработка конфликтов: если два хоткея clash, выбрать более приоритетную команду или вернуть конфликт-результат.
-- Отображение назначения в палитре рядом с командой (компонент tini-shortcut)
-
-- Интеграция с роутером:
-  - Автоматическая регистрация навигационных команд для зарегистрированных роутов
-  - Формат: "Перейти к [Название]"; путь к роуту через @tinijs/router
-
--Аргументы команд:
-  - Поддержка передачи аргументов через action args
-  - Поддержка автодополнения аргументов (строки, числовые значения)
-
-2. Команды и типы
-- CommandDefinition: { id: string; name: string; description?: string; icon?: string; action: (args?: any) => Promise<void> | void; keywords?: string[]; category?: string; }
+1. Основные типы
+- CommandDefinition: { id: string; name: string; description?: string; icon?: string; action: (args?: any) => Promise<void> | void; keywords?: string[]; category?: string; shouldShow?: (context: any) => boolean; }
 - ShortcutDefinition: { keys: string; commandId: string; preventDefault?: boolean }
 
-3. Взаимодействие с UI
-- Pallete использует tini-command-palette и tini-command-item, tini-shortcut
-- Команды отображаются с иконкой и описанием; ярлыки клавиатурных сокращений отображаются рядом
-- Поиск поддерживает fuzzy-search; можно встроить transliterate как опцию
+2. CommandService (пакет @tinijs/toolbox)
+- registerCommand(id: string, name: string, description?: string, icon?: string, action: (args?: any) => Promise<void> | void, keywords?: string[]): void
+- unregisterCommand(id: string): void
+- getRegisteredCommands(): CommandDefinition[]
+- unregister all by category or id (гибкая фильтрация)
+- shouldShow: boolean | (commandId, context) => boolean
+- subscribeContext(context$): void  // контекст страницы или приложения
+- getContext(): any
+- Dynamic registration/deregistration: support for add/remove at runtime
 
-4. Тестирование
-- unit-тесты для CommandService и алгоритмов поиска, обработки клавиатур
-- интеграционные тесты для регистрации команд и навигации
-- пример использования в apps/
+3. Горячие клавиши (hotkeys)
+- registerShortcut(keys: string, commandId: string, preventDefault?: boolean): void
+- unregisterShortcut(keys: string, commandId?: string): void
+- Поддержка последовательностей клавиш и модификаторов: Ctrl, Alt, Shift, Meta
+- Разрешение конфликтов: при конфликте — выбирать более приоритетную команду или возвращать конфликт-результат
+- В палитре показывать назначенные сокращения рядом с командами (через tini-shortcut)
 
-5. Экспорт API
-- Экспортировать публичные типы и сервисы через public-api.ts соответствующих пакетов
+4. Интеграция с роутером
+- Автоматическая регистрация навигационных команд для зарегистрированных роутов
+- Формат команд навигации: "Перейти к [Название]"; маршруты получаются через @tinijs/router
+- Поддержка быстрого доступа к недавно посещённым страницам
 
-Примечание: детали реализации будут обсуждены на этапе прототипирования. Этот документ задаёт контракт и ожидаемую функциональность.
+5. Аргументы команд
+- Поддержка передачи аргументов через action(args)
+- Поддержка автодополнения аргументов (строки, числа и т.д.)
+
+6. Пресс-типки и API экспорт
+- Экпортировать публичные типы и сервисы через public-api.ts соответствующих пакетов
+
+7. Примеры и совместимость
+- Совместимость с существующими UI компонентами @tinijs/ui (Input, Dialog, Spinner)
+- Использование createStore из @tinijs/store для хранения истории команд
+
+Примечание: детали реализации обсуждаются на этапе прототипирования; этот документ задаёт контракт и ожидаемую функциональность.
