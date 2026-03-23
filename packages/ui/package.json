@@ -26,6 +26,7 @@
   "scripts": {
     "tini": "node ../cli/dist/cli/index.js",
     "build": "rimraf ./dist && tsc && npm run tini -- ui build",
+    "test": "vitest run",
     "lint": "gts lint",
     "fix": "gts fix"
   },
