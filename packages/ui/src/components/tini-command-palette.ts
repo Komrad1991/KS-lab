@@ -38,7 +38,6 @@ export class TiniCommandPalette extends TiniComponent {
   private abortControllers = new Map<string, AbortController>()
   private currentArgs?: Record<string, any>
   private selectedCommand?: CommandDefinition
-  private showRecent = false
   private theme: 'light' | 'dark' = 'light'
 
   constructor() {
@@ -218,12 +217,7 @@ export class TiniCommandPalette extends TiniComponent {
     this.inputEl = search ?? this.inputEl
     const q = search?.value ?? ''
     const ctx = this.service?.getContext()
-    // Если включен режим Recent, показываем recent команды
-    if (this.showRecent) {
-      this.items = this.service?.getRecentCommands(20) ?? []
-    } else {
-      this.items = this.service?.searchCommands(q, ctx) ?? []
-    }
+    this.items = this.service?.searchCommands(q, ctx) ?? []
     this.selectedIndex = 0
     this.renderList()
   }

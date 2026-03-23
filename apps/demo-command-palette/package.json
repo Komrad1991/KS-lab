@@ -1,0 +1,17 @@
+{
+  "name": "demo-command-palette",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tini dev",
+    "build": "tini build",
+    "preview": "tini preview"
+  },
+  "dependencies": {
+    "@tinijs/core": "0.21.1",
+    "@tinijs/toolbox": "0.21.1",
+    "@tinijs/ui": "0.21.1",
+    "@tinijs/router": "0.21.1"
+  }
+}
