@@ -5,7 +5,8 @@ import { HotkeyManager } from './hotkeys'
 
 export class CommandService {
   private commands: Map<string, CommandDefinition> = new Map()
-  private shortcuts: Map<string, string> = new Map() // keys -> commandId
+   private shortcuts: Map<string, string> = new Map() // keys -> commandId
+   private shortcutsRev: Map<string, string> = new Map() // commandId -> keys
   private contextSubscribers: Array<(ctx: any) => void> = []
   private currentContext: any = null
   private history: CommandHistoryStore
@@ -103,34 +104,49 @@ export class CommandService {
   }
 
   // Shortcuts API
-  registerShortcut(keys: string, commandId: string, preventDefault = false): void {
-    // Simple: map the keys string to commandId; later conflict resolution can be added
-    this.shortcuts.set(keys, commandId)
-  }
+   registerShortcut(keys: string, commandId: string, preventDefault = false): void {
+     // Simple: map the keys string to commandId; later conflict resolution can be added
+     this.shortcuts.set(keys, commandId)
+     // maintain reverse mapping: commandId -> keys (last registered wins)
+     this.shortcutsRev.set(commandId, keys)
+   }
 
-  unregisterShortcut(keys: string, commandId?: string): void {
-    if (!commandId) {
-      this.shortcuts.delete(keys)
-      return
-    }
-    const mapped = this.shortcuts.get(keys)
-    if (mapped === commandId) this.shortcuts.delete(keys)
-  }
+   unregisterShortcut(keys: string, commandId?: string): void {
+     if (!commandId) {
+       this.shortcuts.delete(keys)
+       // also remove from reverse map for any commands that used these keys
+       for (const [cid, k] of this.shortcutsRev.entries()) {
+         if (k === keys) this.shortcutsRev.delete(cid)
+       }
+       return
+     }
+     const mapped = this.shortcuts.get(keys)
+     if (mapped === commandId) {
+       this.shortcuts.delete(keys)
+       this.shortcutsRev.delete(commandId)
+     }
+   }
 
-  // Context management (lightweight stub)
-  subscribeContext(cb: (ctx: any) => void): void {
-    this.contextSubscribers.push(cb)
-  }
+   // Context management
+   subscribeContext(cb: (ctx: any) => void): void {
+     this.contextSubscribers.push(cb)
+   }
 
-  getContext(): any {
-    return this.currentContext
-  }
+   getContext(): any {
+     return this.currentContext
+   }
 
-  // Context update helper (used by app to push context)
-  updateContext(ctx: any): void {
-    this.currentContext = ctx
-    for (const cb of this.contextSubscribers) cb(ctx)
-  }
+   // Context update helper (used by app to push context)
+   updateContext(ctx: any): void {
+     this.currentContext = ctx
+     for (const cb of this.contextSubscribers) cb(ctx)
+   }
+
+   // Get recent commands from history (for "Recent" section)
+   getRecentCommands(limit = 10): CommandDefinition[] {
+     const recentIds = this.history.getAll().slice(0, limit)
+     return recentIds.map(id => this.commands.get(id)).filter(c => c !== undefined) as CommandDefinition[]
+   }
 
    // Execute a registered command by id
    async runCommand(id: string, args?: Record<string, any>, abortSignal?: AbortSignal): Promise<void> {
@@ -178,8 +194,13 @@ export class CommandService {
     this.hotkeys?.processEvent?.(e)
   }
 
-  // Expose history (for tests/debugging)
-  getHistory(): string[] {
-    return this.history.getAll()
-  }
-}
+   // Expose history (for tests/debugging)
+   getHistory(): string[] {
+     return this.history.getAll()
+   }
+
+   // Get shortcut keys assigned to a command
+   getShortcut(commandId: string): string | undefined {
+     return this.shortcutsRev.get(commandId)
+   }
+ }
