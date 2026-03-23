@@ -1,10 +1,21 @@
-import type { CommandDefinition } from './definition'
-import { CommandService } from './command-service'
+import type { CommandService } from './command-service'
+
+type NavigateFn = (path: string) => void
 
 export function registerNavigationCommandsFromRoutes(
   service: CommandService,
-  routes: Array<{ name: string; path: string }>
+  routes: Array<{ name: string; path: string }>,
+  navigateFn?: NavigateFn
 ): void {
+  const nav = navigateFn ?? ((path: string) => {
+    if (typeof window !== 'undefined') {
+      if (typeof history !== 'undefined' && typeof history.pushState === 'function') {
+        history.pushState({}, '', path)
+      } else {
+        window.location.assign(path)
+      }
+    }
+  })
   // Create a navigation group of commands for all routes
   for (const r of routes) {
     const id = `nav:${r.path}`
@@ -18,17 +29,7 @@ export function registerNavigationCommandsFromRoutes(
       name,
       `Navigate to ${r.name} (${r.path})`,
       'router',
-      () => {
-        if (typeof window !== 'undefined') {
-          const url = r.path
-          // Simple navigation: pushState if available, otherwise assign
-          if (typeof history !== 'undefined' && typeof history.pushState === 'function') {
-            history.pushState({}, '', url)
-          } else {
-            window.location.assign(url)
-          }
-        }
-      },
+      () => nav(r.path),
       ['navigate', 'router']
     )
   }

@@ -24,9 +24,21 @@ export function autoRegisterRoutesFromRouter(
       path: r.path ?? r.url ?? ''
     }))
   }
-  if (routes.length) {
-    registerNavigationCommandsFromRoutes(service, routes)
-  }
+   if (routes.length) {
+     const navigateFn = (path: string) => {
+       if (typeof router.go === 'function') {
+         router.go(path)
+       } else {
+         // fallback
+         if (typeof history !== 'undefined' && typeof history.pushState === 'function') {
+           history.pushState({}, '', path)
+         } else {
+           window.location.assign(path)
+         }
+       }
+     }
+     registerNavigationCommandsFromRoutes(service, routes, navigateFn)
+   }
 }
 
 export default autoRegisterRoutesFromRouter

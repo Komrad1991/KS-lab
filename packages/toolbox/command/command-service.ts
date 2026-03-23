@@ -1,6 +1,7 @@
 import type { CommandDefinition, ShortcutDefinition } from './definition'
-import { fuzzyFilter } from './fuzzy'
+import { fuzzyFilter, fuzzyScore } from './fuzzy'
 import CommandHistoryStore from './history.js'
+import { HotkeyManager } from './hotkeys'
 
 export class CommandService {
   private commands: Map<string, CommandDefinition> = new Map()
@@ -8,31 +9,38 @@ export class CommandService {
   private contextSubscribers: Array<(ctx: any) => void> = []
   private currentContext: any = null
   private history: CommandHistoryStore
+  private hotkeys: HotkeyManager
 
   constructor() {
     this.history = new CommandHistoryStore()
+    this.hotkeys = new HotkeyManager(this)
   }
 
-  // Commands API
-  registerCommand(
-    id: string,
-    name: string,
-    description?: string,
-    icon?: string,
-    action?: (args?: any) => Promise<void> | void,
-    keywords?: string[]
-  ): void {
-    const cmd: CommandDefinition = {
-      id,
-      name,
-      description,
-      icon,
-      action: action ?? (() => Promise.resolve()),
-      keywords,
-      category: undefined
-    }
-    this.commands.set(id, cmd)
-  }
+   // Commands API
+   registerCommand(
+     id: string,
+     name: string,
+     description?: string,
+     icon?: string,
+     action?: (args?: Record<string, any>, abortSignal?: AbortSignal) => Promise<void> | void,
+     keywords?: string[],
+     category?: string,
+     shouldShow?: (context: any) => boolean,
+     args?: CommandDefinition['args']
+   ): void {
+     const cmd: CommandDefinition = {
+       id,
+       name,
+       description,
+       icon,
+       action: action ?? (() => Promise.resolve()),
+       keywords,
+       category,
+       shouldShow,
+       args
+     }
+     this.commands.set(id, cmd)
+   }
 
   unregisterCommand(id: string): void {
     this.commands.delete(id)
@@ -42,19 +50,56 @@ export class CommandService {
     }
   }
 
-  getRegisteredCommands(): CommandDefinition[] {
-    return Array.from(this.commands.values())
-  }
+   getRegisteredCommands(): CommandDefinition[] {
+     return Array.from(this.commands.values())
+   }
+
+   getCommandsByCategory(): Map<string, CommandDefinition[]> {
+     const map = new Map<string, CommandDefinition[]>()
+     for (const cmd of this.commands.values()) {
+       const cat = cmd.category ?? 'Uncategorized'
+       const list = map.get(cat) ?? []
+       list.push(cmd)
+       map.set(cat, list)
+     }
+     return map
+   }
 
   // Basic search support (optional context)
   searchCommands(query: string, context?: any): CommandDefinition[] {
+    // start with all commands
     let list = this.getRegisteredCommands()
-    if (context && typeof (this as any).shouldShowContext === 'function') {
-      // if there is a global context filter, apply it per command
-      list = list.filter((cmd) => (cmd.shouldShow ? cmd.shouldShow(context) : true))
-    }
+    // filter by shouldShow(context) if provided on command
+    if (context == null) context = this.currentContext
+    list = list.filter((cmd) => {
+      if (typeof (cmd as any).shouldShow === 'function') {
+        try {
+          // Call with current or provided context
+          const res = (cmd as any).shouldShow(context)
+          return typeof res === 'boolean' ? res : true
+        } catch {
+          return false
+        }
+      }
+      return true
+    })
     if (!query) return list
-    return fuzzyFilter(query, list)
+    // rank by fuzzy score
+    const scored = list.map((cmd) => {
+      const text = `${cmd.name} ${cmd.description ?? ''} ${(cmd.keywords ?? []).join(' ')}`
+      const score = fuzzyScore(query, text)
+      return { cmd, score }
+    }).filter((x) => x.score > 0)
+      .sort((a, b) => {
+        // boost by history recency if available
+        const ah = (this.history?.getAll?.() ?? []).includes(a.cmd.id) ? 1000 : 0
+        const bh = (this.history?.getAll?.() ?? []).includes(b.cmd.id) ? 1000 : 0
+        if (b.score + bh !== a.score + ah) {
+          return (b.score + bh) - (a.score + ah)
+        }
+        return 0
+      })
+    return scored.map((x) => x.cmd)
   }
 
   // Shortcuts API
@@ -87,18 +132,50 @@ export class CommandService {
     for (const cb of this.contextSubscribers) cb(ctx)
   }
 
-  // Execute a registered command by id
-  async runCommand(id: string, args?: any): Promise<void> {
-    const cmd = this.commands.get(id)
-    if (!cmd) throw new Error(`Command not found: ${id}`)
-    const result = cmd.action?.(args)
-    await Promise.resolve(result)
-    // record in history after successful run
-    try {
-      this.history.add(id)
-    } catch {
-      // ignore history write errors
-    }
+   // Execute a registered command by id
+   async runCommand(id: string, args?: Record<string, any>, abortSignal?: AbortSignal): Promise<void> {
+     const cmd = this.commands.get(id)
+     if (!cmd) throw new Error(`Command not found: ${id}`)
+     const controller = new AbortController()
+     const mergedSignal = abortSignal ? this.mergeSignals(abortSignal, controller.signal) : controller.signal
+     const result = cmd.action?.(args, mergedSignal)
+     // Await with abort support
+     await this.awaitWithCancel(result, mergedSignal)
+     // record in history after successful run
+     try {
+       this.history.add(id)
+     } catch {
+       // ignore history write errors
+     }
+   }
+
+   private mergeSignals(s1: AbortSignal, s2: AbortSignal): AbortSignal {
+     const controller = new AbortController()
+     const abort = () => controller.abort()
+     s1.addEventListener('abort', abort)
+     s2.addEventListener('abort', abort)
+     return controller.signal
+   }
+
+   private async awaitWithCancel(promise: any, signal: AbortSignal): Promise<void> {
+     if (!(promise instanceof Promise)) return
+     let completed = false
+     try {
+       const res = await promise
+       completed = true
+       return res
+     } finally {
+       if (!completed && signal.aborted) {
+         // If aborted before completion, we could throw or just ignore
+       }
+     }
+   }
+
+  // Expose a way to simulate key events for tests (hotkeys)
+  simulateKeyEvent(e: KeyboardEvent): void {
+    // delegate to hotkeys processor if available
+    // @ts-ignore
+    this.hotkeys?.processEvent?.(e)
   }
 
   // Expose history (for tests/debugging)
