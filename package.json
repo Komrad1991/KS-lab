@@ -36,6 +36,8 @@
     "test": "lerna run test",
     "lint": "lerna run lint",
     "fix": "lerna run fix",
+    "typecheck": "lerna run build",
+    "format": "prettier --write .",
     "benchmark": "tsx ./scripts/benchmark.mts",
     "release": "lerna publish --no-private --force-publish --conventional-commits && tsx ./scripts/release-ui.mts"
   },
