@@ -2,6 +2,28 @@
 
 This document provides the operational and stylistic rules for agentic coding agents that work inside this repository. It covers how to build, lint, and test code, plus coding conventions that keep the codebase clean and maintainable.
 
+## Environment
+
+- Development is performed via **OpenCode** on **Windows 11**.
+- Available tools: `bash`, `read`, `glob`, `grep`, `edit`, `write`, `task`, `webfetch`, `todowrite`, `skill`.
+- Two operational modes: `Plan` (read-only, planning only) and `Build` (read-write, implementation).
+
+## OpenCode Commands
+
+- `bash`: Run shell commands (with timeout, workdir support)
+- `read`: Read file or directory contents
+- `glob`: Find files by pattern
+- `grep`: Search file contents using regex
+- `edit`: Apply exact string replacement in a file (requires prior read)
+- `write`: Write a new file or overwrite existing (requires prior read if overwriting)
+- `task`: Launch a specialized agent for complex multistep tasks
+- `webfetch`: Fetch and convert web content (markdown/text/html)
+- `todowrite`: Create and manage a structured task list
+- `skill`: Load a specialized skill
+
+Use these tools to navigate, modify, and validate the codebase. Always read files before editing them with `edit`. When creating new files, `write` can be used directly.
+
+
 Table of contents
 - Quick start: common commands
 - Running a single test
@@ -26,6 +48,28 @@ Table of contents
 - Run a single test: see below under "Running a single test" for common runners.
 
 If your project uses yarn or pnpm, substitute accordingly (e.g. yarn build, pnpm test).
+
+### OpenCode-specific commands
+During development with OpenCode, the agent can use the following tools:
+- `bash`: Execute shell commands (with timeout and working directory support)
+- `read`: Read file or directory contents
+- `glob`: Find files by pattern (e.g., `**/*.ts`)
+- `grep`: Search file contents using regex
+- `edit`: Apply exact string replacement in a file (requires prior `read`)
+- `write`: Write a new file or overwrite existing (requires prior `read` if overwriting)
+- `task`: Launch a specialized agent for complex multistep tasks
+- `webfetch`: Fetch and convert web content (markdown/text/html)
+- `todowrite`: Create and manage a structured task list
+- `skill`: Load a specialized skill
+
+These tools are used to navigate, modify, and validate the codebase. Always read files before editing them with `edit`. When creating new files, `write` can be used directly.
+
+### Operational Modes
+- **Plan Mode**: Read-only, planning only. No code changes, no file edits. Used for analyzing, asking questions, and creating plans.
+- **Build Mode**: Read-write, implementation. Allowed to modify files, run commands, and commit changes.
+
+Switch modes as needed to match the phase of work (planning vs. implementation).
+
 
 ## Running a single test
 Support varies by test runner. Common patterns:
