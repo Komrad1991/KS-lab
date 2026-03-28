@@ -5,18 +5,22 @@ export interface CommandArgument {
   description?: string;
 }
 
+export type CommandArgs = Record<string, unknown>;
+export type CommandContext = unknown;
+export type CommandAction = (
+  args?: CommandArgs,
+  abortSignal?: AbortSignal
+) => Promise<void> | void;
+
 export interface CommandDefinition {
   id: string;
   name: string;
   description?: string;
   icon?: string;
-  action: (
-    args?: Record<string, any>,
-    abortSignal?: AbortSignal
-  ) => Promise<void> | void;
+  action: CommandAction;
   keywords?: string[];
   category?: string;
-  shouldShow?: (context: any) => boolean;
+  shouldShow?: (context: CommandContext) => boolean;
   args?: CommandArgument[];
   closeOnRun?: boolean;
 }
@@ -25,4 +29,5 @@ export interface ShortcutDefinition {
   keys: string;
   commandId: string;
   preventDefault?: boolean;
+  priority?: number;
 }

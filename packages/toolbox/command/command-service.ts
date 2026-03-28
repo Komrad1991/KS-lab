@@ -1,16 +1,47 @@
-import type {CommandDefinition} from './definition.js';
+import type {
+  CommandAction,
+  CommandArgs,
+  CommandContext,
+  CommandDefinition,
+  ShortcutDefinition,
+} from './definition.js';
 import {fuzzyScore} from './fuzzy.js';
 import CommandHistoryStore from './history.js';
 import {HotkeyManager} from './hotkeys.js';
 
+type RegisteredShortcut = Required<ShortcutDefinition> & {
+  order: number;
+  normalizedKeys: string;
+};
+
+function normalizeShortcutKeys(keys: string): string {
+  const trimmed = keys.trim();
+  if (trimmed.includes(' ')) {
+    return trimmed
+      .split(/\s+/)
+      .filter(Boolean)
+      .map(part => part.toLowerCase())
+      .join(' ');
+  }
+
+  return trimmed
+    .split('+')
+    .map(part => part.trim())
+    .filter(Boolean)
+    .map(part => (part.length === 1 ? part.toUpperCase() : part))
+    .join('+')
+    .toLowerCase();
+}
+
 export class CommandService {
   private commands: Map<string, CommandDefinition> = new Map();
-  private shortcuts: Map<string, string> = new Map(); // keys -> commandId
-  private shortcutsRev: Map<string, string> = new Map(); // commandId -> keys
-  private contextSubscribers: Array<(ctx: any) => void> = [];
-  private currentContext: any = null;
+  private shortcuts = new Map<string, RegisteredShortcut[]>();
+  private shortcutsRev = new Map<string, string>();
+  private contextSubscribers: Array<(ctx: CommandContext) => void> = [];
+  private currentContext: CommandContext = null;
   private history: CommandHistoryStore;
   private hotkeys: HotkeyManager;
+  private shortcutRegistrationOrder = 0;
 
   constructor() {
     this.history = new CommandHistoryStore();
@@ -22,13 +53,10 @@ export class CommandService {
     name: string,
     description?: string,
     icon?: string,
-    action?: (
-      args?: Record<string, any>,
-      abortSignal?: AbortSignal
-    ) => Promise<void> | void,
+    action?: CommandAction,
     keywords?: string[],
     category?: string,
-    shouldShow?: (context: any) => boolean,
+    shouldShow?: (context: CommandContext) => boolean,
     args?: CommandDefinition['args'],
     closeOnRun = true
   ): void {
@@ -49,11 +77,9 @@ export class CommandService {
 
   unregisterCommand(id: string): void {
     this.commands.delete(id);
-    for (const [k, v] of Array.from(this.shortcuts.entries())) {
-      if (v === id) {
-        this.shortcuts.delete(k);
-        this.hotkeys.unregisterShortcut(k, id);
-      }
+    const registeredShortcut = this.shortcutsRev.get(id);
+    if (registeredShortcut) {
+      this.unregisterShortcut(registeredShortcut, id);
     }
     this.shortcutsRev.delete(id);
   }
@@ -73,14 +99,14 @@ export class CommandService {
     return map;
   }
 
-  searchCommands(query: string, context?: any): CommandDefinition[] {
+  searchCommands(query: string, context?: CommandContext): CommandDefinition[] {
     let list = this.getRegisteredCommands();
     if (context === null || context === undefined)
       context = this.currentContext;
     list = list.filter(cmd => {
-      if (typeof (cmd as any).shouldShow === 'function') {
+      if (typeof cmd.shouldShow === 'function') {
         try {
-          const res = (cmd as any).shouldShow(context);
+          const res = cmd.shouldShow(context);
           return typeof res === 'boolean' ? res : true;
         } catch {
           return false;
@@ -132,50 +158,75 @@ export class CommandService {
   registerShortcut(
     keys: string,
     commandId: string,
-    preventDefault = false
+    preventDefault = false,
+    priority = 0
   ): void {
-    const prevKeys = this.shortcutsRev.get(commandId);
-    if (prevKeys) {
-      this.shortcuts.delete(prevKeys);
-      this.hotkeys.unregisterShortcut(prevKeys, commandId);
+    const normalizedKeys = normalizeShortcutKeys(keys);
+    const previousKeys = this.shortcutsRev.get(commandId);
+    if (previousKeys && previousKeys !== normalizedKeys) {
+      this.unregisterShortcut(previousKeys, commandId);
     }
 
-    const previousCommandId = this.shortcuts.get(keys);
-    if (previousCommandId) {
-      this.shortcutsRev.delete(previousCommandId);
-      this.hotkeys.unregisterShortcut(keys, previousCommandId);
-    }
+    const currentEntries = this.shortcuts.get(normalizedKeys) ?? [];
+    const nextEntry: RegisteredShortcut = {
+      keys,
+      commandId,
+      preventDefault,
+      priority,
+      order: ++this.shortcutRegistrationOrder,
+      normalizedKeys,
+    };
 
-    this.shortcuts.set(keys, commandId);
-    this.shortcutsRev.set(commandId, keys);
-    this.hotkeys.registerShortcut(keys, commandId, preventDefault);
+    this.shortcuts.set(
+      normalizedKeys,
+      currentEntries
+        .filter(entry => entry.commandId !== commandId)
+        .concat(nextEntry)
+    );
+    this.shortcutsRev.set(commandId, normalizedKeys);
+    this.hotkeys.registerShortcut(keys, commandId, preventDefault, priority);
   }
 
   unregisterShortcut(keys: string, commandId?: string): void {
+    const normalizedKeys = normalizeShortcutKeys(keys);
     if (!commandId) {
-      const mappedCommandId = this.shortcuts.get(keys);
-      this.shortcuts.delete(keys);
-      if (mappedCommandId) this.shortcutsRev.delete(mappedCommandId);
+      const removedEntries = this.shortcuts.get(normalizedKeys) ?? [];
+      removedEntries.forEach(entry =>
+        this.shortcutsRev.delete(entry.commandId)
+      );
+      this.shortcuts.delete(normalizedKeys);
       this.hotkeys.unregisterShortcut(keys);
       return;
     }
-    const mapped = this.shortcuts.get(keys);
-    if (mapped === commandId) {
-      this.shortcuts.delete(keys);
+
+    const mappedEntries = this.shortcuts.get(normalizedKeys);
+    if (!mappedEntries?.length) {
+      return;
+    }
+
+    const filteredEntries = mappedEntries.filter(
+      entry => entry.commandId !== commandId
+    );
+    if (filteredEntries.length !== mappedEntries.length) {
+      if (filteredEntries.length) {
+        this.shortcuts.set(normalizedKeys, filteredEntries);
+      } else {
+        this.shortcuts.delete(normalizedKeys);
+      }
       this.shortcutsRev.delete(commandId);
       this.hotkeys.unregisterShortcut(keys, commandId);
     }
   }
 
-  subscribeContext(cb: (ctx: any) => void): void {
+  subscribeContext(cb: (ctx: CommandContext) => void): void {
     this.contextSubscribers.push(cb);
   }
 
-  getContext(): any {
+  getContext(): CommandContext {
     return this.currentContext;
   }
 
-  updateContext(ctx: any): void {
+  updateContext(ctx: CommandContext): void {
     this.currentContext = ctx;
     for (const cb of this.contextSubscribers) cb(ctx);
   }
@@ -193,7 +244,7 @@ export class CommandService {
 
   async runCommand(
     id: string,
-    args?: Record<string, any>,
+    args?: CommandArgs,
     abortSignal?: AbortSignal
   ): Promise<void> {
     const cmd = this.commands.get(id);
@@ -254,6 +305,32 @@ export class CommandService {
   }
 
   getShortcut(commandId: string): string | undefined {
-    return this.shortcutsRev.get(commandId);
+    const normalizedKeys = this.shortcutsRev.get(commandId);
+    if (!normalizedKeys) {
+      return undefined;
+    }
+
+    const entries = this.shortcuts.get(normalizedKeys);
+    const activeShortcut = this.getWinningShortcut(entries);
+    return activeShortcut?.commandId === commandId
+      ? activeShortcut.keys
+      : undefined;
+  }
+
+  private getWinningShortcut(
+    entries?: RegisteredShortcut[]
+  ): RegisteredShortcut | undefined {
+    return entries?.reduce<RegisteredShortcut | undefined>(
+      (winner, candidate) => {
+        if (!winner) {
+          return candidate;
+        }
+        if (candidate.priority !== winner.priority) {
+          return candidate.priority > winner.priority ? candidate : winner;
+        }
+        return candidate.order > winner.order ? candidate : winner;
+      },
+      undefined
+    );
   }
 }

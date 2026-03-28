@@ -427,6 +427,18 @@ export class TiniCommandPalette extends TiniComponent {
       letter-spacing: 0.08em;
     }
 
+    .header-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .header-status tini-spinner,
+    .button-spinner {
+      --color: var(--cp-accent);
+      --size: 8px;
+    }
+
     #palette-search {
       display: block;
       width: 100%;
@@ -572,6 +584,12 @@ export class TiniCommandPalette extends TiniComponent {
       cursor: not-allowed;
       opacity: 0.6;
       transform: none;
+    }
+
+    .button-content {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
     }
 
     .primary {
@@ -803,7 +821,17 @@ export class TiniCommandPalette extends TiniComponent {
         >
           <div class="header">
             <span>Command Palette</span>
-            <span>${this.family} / ${this.theme}</span>
+            <span class="header-status">
+              ${this.loadingCommandId
+                ? html`
+                    <tini-spinner
+                      aria-hidden="true"
+                      data-testid="palette-loading-indicator"
+                    ></tini-spinner>
+                    <span>Выполняется команда…</span>
+                  `
+                : html`<span>${this.family} / ${this.theme}</span>`}
+            </span>
           </div>
           <tini-input
             id="palette-search"
@@ -858,7 +886,21 @@ export class TiniCommandPalette extends TiniComponent {
                             this.argValues
                           )}
                       >
-                        Запустить
+                        <span class="button-content">
+                          ${this.loadingCommandId === currentArgsCommand.id
+                            ? html`
+                                <tini-spinner
+                                  class="button-spinner"
+                                  aria-hidden="true"
+                                ></tini-spinner>
+                              `
+                            : nothing}
+                          <span>
+                            ${this.loadingCommandId === currentArgsCommand.id
+                              ? 'Выполняется...'
+                              : 'Запустить'}
+                          </span>
+                        </span>
                       </button>
                       <button
                         class="ghost"

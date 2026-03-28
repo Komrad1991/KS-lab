@@ -7,6 +7,20 @@ type RouteLike = {
   path: string;
 };
 
+type RouterRouteLike = {
+  name?: string;
+  title?: string;
+  path?: string;
+  url?: string;
+};
+
+type RouterLike = {
+  getRoutes?: () => RouteLike[];
+  getActiveRoute?: () => {path?: string} | undefined;
+  go?: (path: string) => void;
+  routes?: RouterRouteLike[];
+};
+
 const ROUTE_CHANGE_EVENT = 'tini:route-change';
 const trackerRegistry = new WeakMap<object, Set<CommandService>>();
 
@@ -27,7 +41,7 @@ function markVisitedRoute(
 
 function ensureRouteTracking(
   service: CommandService,
-  router: any,
+  router: RouterLike,
   routes: RouteLike[]
 ): void {
   if (!router || typeof window === 'undefined') return;
@@ -58,7 +72,7 @@ function ensureRouteTracking(
 
 export function autoRegisterRoutesFromRouter(
   service: CommandService,
-  router: any
+  router: RouterLike | null | undefined
 ): void {
   if (!router) return;
   let routes: RouteLike[] = [];
@@ -70,10 +84,10 @@ export function autoRegisterRoutesFromRouter(
     }
   }
   if (!routes.length && Array.isArray(router.routes)) {
-    routes = router.routes.map((r: any) => ({
-      name: r.name ?? r.title ?? String(r.path ?? ''),
-      title: r.title,
-      path: r.path ?? r.url ?? '',
+    routes = router.routes.map(route => ({
+      name: route.name ?? route.title ?? String(route.path ?? ''),
+      title: route.title,
+      path: route.path ?? route.url ?? '',
     }));
   }
 

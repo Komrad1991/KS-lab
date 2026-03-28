@@ -65,4 +65,31 @@ describe('router-auto loader', () => {
 
     expect(service.getRecentCommands(2).map(c => c.id)).toContain('nav:/about');
   });
+
+  it('falls back to router.routes when getRoutes throws', () => {
+    const fakeRouter = {
+      getRoutes: () => {
+        throw new Error('router unavailable');
+      },
+      routes: [{path: '/fallback', title: 'Fallback'}],
+    };
+
+    autoRegisterRoutesFromRouter(service, fakeRouter);
+
+    expect(
+      service.getRegisteredCommands().some(c => c.id === 'nav:/fallback')
+    ).toBe(true);
+  });
+
+  it('uses history navigation when router.go is not available', async () => {
+    history.replaceState({}, '', '/');
+    const fakeRouter = {
+      routes: [{path: '/docs', title: 'Docs'}],
+    };
+
+    autoRegisterRoutesFromRouter(service, fakeRouter);
+    await service.runCommand('nav:/docs');
+
+    expect(location.pathname).toBe('/docs');
+  });
 });

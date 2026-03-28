@@ -303,6 +303,54 @@ describe('tini-command-palette', () => {
     expect(getInnerDialog(palette).open).toBe(true);
   });
 
+  it('shows a loading indicator while an args command is executing', async () => {
+    let resolveRun: (() => void) | undefined;
+    const runCommand = vi.fn(
+      () =>
+        new Promise<void>(resolve => {
+          resolveRun = resolve;
+        })
+    );
+    const palette = createPalette(
+      new TestCommandService(
+        [
+          {
+            id: 'search',
+            name: 'Search Commands',
+            action: () => {},
+            args: [{name: 'query', type: 'string'}],
+          },
+        ],
+        runCommand
+      )
+    );
+
+    await palette.updateComplete;
+    await openPalette(palette);
+    document.dispatchEvent(
+      new KeyboardEvent('keydown', {key: 'Enter', bubbles: true})
+    );
+    await palette.updateComplete;
+
+    const submitButton = palette.shadowRoot.querySelector(
+      '.args .primary'
+    ) as HTMLButtonElement;
+    submitButton.click();
+    await palette.updateComplete;
+    await flushUpdates();
+
+    expect(
+      palette.shadowRoot.querySelector(
+        '[data-testid="palette-loading-indicator"]'
+      )
+    ).toBeTruthy();
+    expect(submitButton.disabled).toBe(true);
+    expect(submitButton.textContent).toContain('Выполняется...');
+
+    resolveRun?.();
+    await flushUpdates();
+  });
+
   it('submits entered argument values from the args form', async () => {
     const runCommand = vi.fn(async () => {});
     const palette = createPalette(

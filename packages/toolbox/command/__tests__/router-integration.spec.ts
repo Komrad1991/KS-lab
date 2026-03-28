@@ -35,4 +35,17 @@ describe('router integration - navigation commands', () => {
     expect(command?.category).toBe('Navigation');
     expect(command?.keywords).toContain('/about');
   });
+
+  it('skips duplicate route commands and uses history navigation by default', async () => {
+    history.replaceState({}, '', '/');
+    registerNavigationCommandsFromRoutes(service, [{name: 'Home', path: '/'}]);
+    registerNavigationCommandsFromRoutes(service, [{name: 'Home', path: '/'}]);
+
+    expect(
+      service.getRegisteredCommands().filter(command => command.id === 'nav:/')
+    ).toHaveLength(1);
+
+    await service.runCommand('nav:/');
+    expect(location.pathname).toBe('/');
+  });
 });

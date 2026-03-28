@@ -1,5 +1,6 @@
-import {describe, it, expect, beforeEach, vi} from 'vitest';
+import {describe, it, expect, beforeEach} from 'vitest';
 import {CommandService} from '../command-service.js';
+import type {CommandArgs} from '../definition.js';
 
 describe('CommandService - basic API', () => {
   let service: CommandService;
@@ -115,7 +116,7 @@ describe('CommandService - extended', () => {
         () => {},
         undefined,
         undefined,
-        (ctx: any) => ctx.show
+        (ctx: unknown) => Boolean((ctx as {show?: boolean})?.show)
       );
       service.updateContext({show: true});
       let list = service.searchCommands('', service.getContext());
@@ -123,6 +124,36 @@ describe('CommandService - extended', () => {
       service.updateContext({show: false});
       list = service.searchCommands('', service.getContext());
       expect(list.some(c => c.id === 'cond')).toBe(false);
+    });
+
+    it('hides commands when shouldShow throws and keeps commands for non-boolean values', () => {
+      service.registerCommand(
+        'safe',
+        'Safe',
+        undefined,
+        undefined,
+        () => {},
+        undefined,
+        undefined,
+        () => 'visible' as unknown as boolean
+      );
+      service.registerCommand(
+        'broken',
+        'Broken',
+        undefined,
+        undefined,
+        () => {},
+        undefined,
+        undefined,
+        () => {
+          throw new Error('bad context');
+        }
+      );
+
+      const list = service.searchCommands('');
+
+      expect(list.some(c => c.id === 'safe')).toBe(true);
+      expect(list.some(c => c.id === 'broken')).toBe(false);
     });
   });
 
@@ -139,11 +170,75 @@ describe('CommandService - extended', () => {
       service.registerShortcut('Ctrl+J', 'cmd');
       expect(service.getShortcut('cmd')).toBe('Ctrl+J');
     });
+
+    it('returns only the winning shortcut when keys conflict', () => {
+      service.registerCommand(
+        'primary',
+        'Primary',
+        undefined,
+        undefined,
+        () => {}
+      );
+      service.registerCommand(
+        'secondary',
+        'Secondary',
+        undefined,
+        undefined,
+        () => {}
+      );
+
+      service.registerShortcut('Ctrl+K', 'secondary', false, 1);
+      service.registerShortcut('Ctrl+K', 'primary', false, 10);
+
+      expect(service.getShortcut('primary')).toBe('Ctrl+K');
+      expect(service.getShortcut('secondary')).toBeUndefined();
+    });
+
+    it('restores a lower-priority shortcut after unregistering the winner', () => {
+      service.registerCommand(
+        'primary',
+        'Primary',
+        undefined,
+        undefined,
+        () => {}
+      );
+      service.registerCommand(
+        'secondary',
+        'Secondary',
+        undefined,
+        undefined,
+        () => {}
+      );
+
+      service.registerShortcut('Ctrl+K', 'secondary', false, 1);
+      service.registerShortcut('Ctrl+K', 'primary', false, 10);
+      service.unregisterShortcut('Ctrl+K', 'primary');
+
+      expect(service.getShortcut('secondary')).toBe('Ctrl+K');
+    });
+
+    it('removes all registrations for a shortcut when no commandId is provided', () => {
+      service.registerCommand('first', 'First', undefined, undefined, () => {});
+      service.registerCommand(
+        'second',
+        'Second',
+        undefined,
+        undefined,
+        () => {}
+      );
+      service.registerShortcut('Ctrl+K', 'first', false, 1);
+      service.registerShortcut('Ctrl+K', 'second', false, 10);
+
+      service.unregisterShortcut('Ctrl+K');
+
+      expect(service.getShortcut('first')).toBeUndefined();
+      expect(service.getShortcut('second')).toBeUndefined();
+    });
   });
 
   describe('runCommand with args', () => {
     it('passes args to action', async () => {
-      let receivedArgs: any = undefined;
+      let receivedArgs: CommandArgs | undefined = undefined;
       service.registerCommand(
         'argcmd',
         'ArgCmd',
@@ -154,7 +249,7 @@ describe('CommandService - extended', () => {
         }
       );
       await service.runCommand('argcmd', {foo: 'bar'});
-      expect(receivedArgs?.foo).toBe('bar');
+      expect(receivedArgs?.['foo']).toBe('bar');
     });
 
     it('stores command closeOnRun option', () => {
@@ -173,6 +268,12 @@ describe('CommandService - extended', () => {
       expect(
         service.getRegisteredCommands().find(c => c.id === 'sticky')
       ).toMatchObject({closeOnRun: false});
+    });
+
+    it('throws a helpful error when the command is missing', async () => {
+      await expect(service.runCommand('missing')).rejects.toThrow(
+        'Command not found: missing'
+      );
     });
   });
 

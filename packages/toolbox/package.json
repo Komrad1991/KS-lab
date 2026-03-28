@@ -38,6 +38,7 @@
   "scripts": {
     "build": "rimraf ./dist && tsc",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "lint": "gts lint",
     "fix": "gts fix"
   },

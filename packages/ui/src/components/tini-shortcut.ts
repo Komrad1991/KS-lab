@@ -7,15 +7,20 @@ export class TiniShortcut extends TiniComponent {
   static override styles = css`
     :host {
       display: inline-flex;
-      gap: 6px;
+      gap: 8px;
       align-items: center;
       flex-wrap: wrap;
     }
 
     .combo {
       display: inline-flex;
-      gap: 4px;
+      gap: 6px;
       align-items: center;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--cp-shortcut-bg) 86%, transparent);
+      border: 1px solid
+        color-mix(in srgb, var(--cp-shortcut-fg) 10%, transparent);
     }
 
     kbd {
@@ -36,11 +41,22 @@ export class TiniShortcut extends TiniComponent {
         'Liberation Mono',
         'Courier New',
         monospace;
+      text-align: center;
+    }
+
+    .plus {
+      color: color-mix(in srgb, var(--cp-shortcut-fg) 62%, transparent);
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1;
     }
 
     .arrow {
       color: var(--cp-muted);
-      font-size: 12px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
     }
   `;
 
@@ -58,8 +74,14 @@ export class TiniShortcut extends TiniComponent {
           .map(key => normalizeShortcutKey(key))
           .filter(Boolean);
         return html`
-          <span class="combo">
-            ${keys.map(key => html`<kbd>${key}</kbd>`)}
+          <span class="combo" aria-label=${keys.join(' plus ')}>
+            ${keys.map(
+              (key, keyIndex) => html`
+                <kbd>${key}</kbd>${keyIndex < keys.length - 1
+                  ? html`<span class="plus" aria-hidden="true">+</span>`
+                  : nothing}
+              `
+            )}
           </span>
           ${index < sequence.length - 1
             ? html`<span class="arrow">then</span>`

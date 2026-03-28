@@ -36,6 +36,12 @@ npm run build
 npm run test
 ```
 
+Запустить coverage для ключевых пакетов command palette:
+
+```powershell
+npm run test:coverage
+```
+
 Запустить browser e2e для демо command palette:
 
 ```powershell
@@ -157,6 +163,13 @@ npm run preview -w benchmark.tinijs.dev
 npm run test -w @tinijs/toolbox
 npm run test -w @tinijs/ui
 npm run test -w @tinijs/router
+```
+
+Coverage по целевым пакетам:
+
+```powershell
+npm run test:coverage -w @tinijs/toolbox
+npm run test:coverage -w @tinijs/ui
 ```
 
 Точечная сборка пакета:

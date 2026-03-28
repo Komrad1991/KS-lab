@@ -25,4 +25,5 @@ export interface ShortcutDefinition {
   keys: string;
   commandId: string;
   preventDefault?: boolean;
+  priority?: number;
 }
