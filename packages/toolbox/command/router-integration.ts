@@ -1,36 +1,44 @@
-import type { CommandService } from './command-service'
+import type {CommandService} from './command-service.js';
+import type {CommandDefinition} from './definition.js';
 
-type NavigateFn = (path: string) => void
+type NavigateFn = (path: string) => void;
 
 export function registerNavigationCommandsFromRoutes(
   service: CommandService,
-  routes: Array<{ name: string; path: string }>,
+  routes: Array<{name?: string; title?: string; path: string}>,
   navigateFn?: NavigateFn
 ): void {
-  const nav = navigateFn ?? ((path: string) => {
-    if (typeof window !== 'undefined') {
-      if (typeof history !== 'undefined' && typeof history.pushState === 'function') {
-        history.pushState({}, '', path)
-      } else {
-        window.location.assign(path)
+  const nav =
+    navigateFn ??
+    ((path: string) => {
+      if (typeof window !== 'undefined') {
+        if (
+          typeof history !== 'undefined' &&
+          typeof history.pushState === 'function'
+        ) {
+          history.pushState({}, '', path);
+        } else {
+          window.location.assign(path);
+        }
       }
-    }
-  })
-  // Create a navigation group of commands for all routes
+    });
   for (const r of routes) {
-    const id = `nav:${r.path}`
-    const name = `Перейти к ${r.name}`
-    // If already registered, skip to avoid duplicates
-    const exists = service.getRegisteredCommands().some((c) => c.id === id)
-    if (exists) continue
+    const routeName = r.name ?? r.title ?? r.path;
+    const id = `nav:${r.path}`;
+    const name = `Перейти к ${routeName}`;
+    const exists = service
+      .getRegisteredCommands()
+      .some((c: CommandDefinition) => c.id === id);
+    if (exists) continue;
 
     service.registerCommand(
       id,
       name,
-      `Navigate to ${r.name} (${r.path})`,
+      `Navigate to ${routeName} (${r.path})`,
       'router',
       () => nav(r.path),
-      ['navigate', 'router']
-    )
+      ['navigate', 'router', routeName, r.path],
+      'Navigation'
+    );
   }
 }

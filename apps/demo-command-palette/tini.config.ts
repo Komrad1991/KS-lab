@@ -1,5 +1,9 @@
-import { defineConfig } from '@tinijs/cli'
+import {defineTiniConfig} from '../../packages/project/dist/public-api.js';
 
-export default defineConfig({
-  // Minimal config for demo
-})
+export default defineTiniConfig({
+  build: {
+    options: {
+      configPath: '../../packages/vite-builder/vite.config.js',
+    },
+  },
+});

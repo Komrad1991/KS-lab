@@ -34,6 +34,7 @@
   "scripts": {
     "build": "lerna run build",
     "test": "lerna run test",
+    "test:e2e": "npm run test:e2e -w demo-command-palette",
     "lint": "lerna run lint",
     "fix": "lerna run fix",
     "typecheck": "lerna run build",
@@ -49,6 +50,7 @@
     "url": "https://github.com/tinijs/tinijs/issues"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@types/fs-extra": "^11.0.4",
     "@types/node": "^20.11.30",
     "chrome-launcher": "^1.1.2",

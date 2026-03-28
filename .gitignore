@@ -1,18 +1,26 @@
 # general
 .DS_Store
+.codex-tmp
 node_modules
 .nx/cache
 .nx/workspace-data
+build-output.txt
+lint-output.txt
+test-output.txt
+typecheck-output.txt
+nul
 
 # packages
 packages/*/build
 packages/*/dist
+packages/core/debug.log
 *.tgz
 
 # apps
 .parcel-cache
 .tini
 .output
+apps/*/dist
 apps/*/app/ui
 apps/*/app/public/tini-content
 apps/*/app/public/sw.js

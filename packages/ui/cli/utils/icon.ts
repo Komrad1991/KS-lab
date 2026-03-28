@@ -101,7 +101,7 @@ async function loadAndProcessAvailableIcons(
       let filePaths = (await listDir(resolve(dir))).filter(imageFilter);
       if (filterPaths) filePaths = filterPaths(filePaths);
       allFilePaths.push(
-        ...filePaths.map(path => {
+        ...filePaths.map((path: string) => {
           const {name: originalName, ext} = parse(path);
           const name = slugify(
             !transformName ? originalName : transformName(originalName)
@@ -119,7 +119,7 @@ async function loadAndProcessAvailableIcons(
         );
         if (filterPaths) filePaths = filterPaths(filePaths);
         allFilePaths.push(
-          ...filePaths.map(path => {
+          ...filePaths.map((path: string) => {
             const {name: originalName, ext} = parse(path);
             let name = slugify(
               !transformName ? originalName : transformName(originalName)

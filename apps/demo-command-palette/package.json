@@ -4,14 +4,18 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tini dev",
-    "build": "tini build",
-    "preview": "tini preview"
+    "tini": "node ../../packages/cli/dist/cli/index.js",
+    "dev": "npm run tini -- dev",
+    "build": "npm run tini -- build",
+    "preview": "npm run tini -- preview",
+    "test:e2e": "npm run build && playwright test",
+    "test:e2e:headed": "npm run build && playwright test --headed"
   },
   "dependencies": {
+    "@tinijs/cli": "0.21.1",
     "@tinijs/core": "0.21.1",
-    "@tinijs/toolbox": "0.21.1",
+    "@tinijs/toolbox": "0.21.0",
     "@tinijs/ui": "0.21.1",
-    "@tinijs/router": "0.21.1"
+    "@tinijs/router": "0.21.0"
   }
 }

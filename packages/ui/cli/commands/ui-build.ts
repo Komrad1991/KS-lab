@@ -28,6 +28,13 @@ import {buildIcons} from '../utils/icon.js';
 
 import cliExpansion from '../expansion.js';
 
+type UIBuildCallbacks = {
+  onNoConfig?: () => void;
+  onStartPack?: (outDir: string) => void;
+  onBundle?: () => void;
+  onEnd?: (packCount: number) => void;
+};
+
 export const uiBuildCommand = createCLICommand(
   {
     meta: {
@@ -35,7 +42,7 @@ export const uiBuildCommand = createCLICommand(
       description: 'Build UI packages.',
     },
   },
-  async (args, callbacks) => {
+  async (_args: unknown, callbacks?: UIBuildCallbacks) => {
     const {
       context: {tiniProject},
     } = cliExpansion;
@@ -48,7 +55,7 @@ export const uiBuildCommand = createCLICommand(
     const packConfigs = [uiConfig].concat(
       !uiConfig.outPacks
         ? []
-        : uiConfig.outPacks.map(pack =>
+        : uiConfig.outPacks.map((pack: (typeof uiConfig.outPacks)[number]) =>
             pack.extends === false ? pack : defu(pack, uiConfig)
           )
     );

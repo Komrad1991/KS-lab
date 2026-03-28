@@ -13,8 +13,12 @@
     "access": "public"
   },
   "type": "module",
+  "types": "./dist/public-api.d.ts",
   "exports": {
-    ".": "./dist/public-api.js",
+    ".": {
+      "types": "./dist/public-api.d.ts",
+      "default": "./dist/public-api.js"
+    },
     "./dist/*": "./dist/*",
     "./cli": "./dist/cli/public-api.js",
     "./cli-expansion": "./dist/cli/expansion.js"
@@ -47,6 +51,8 @@
     "@tinijs/cli": "^0.21.1",
     "@tinijs/core": "^0.21.1",
     "@tinijs/project": "^0.21.0",
+    "@tinijs/store": "^0.21.0",
+    "@tinijs/toolbox": "^0.21.0",
     "colorette": "^2.0.20",
     "consola": "^3.2.3",
     "defu": "^6.1.4",

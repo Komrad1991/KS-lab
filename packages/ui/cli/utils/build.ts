@@ -85,7 +85,9 @@ async function rewriteImportPath(
     const currentPath = resolve();
     if (fromPath.startsWith(currentPath)) {
       const packageName = ((globalThis as any).currentPackageName ||=
-        await loadProjectPackageJSON().then(({name}) => name)) as string;
+        await loadProjectPackageJSON().then(
+          ({name}: {name?: string}) => name
+        )) as string;
       return fromPath.replace(currentPath, `${packageName}/dist`);
     }
     // no rewrite
@@ -559,8 +561,11 @@ export async function transpileAndRemoveTSFiles(
 ) {
   const ourDirPath = resolve(outDir);
   // transpile
-  await transpileAndOutputFiles(tsFilePaths, TS_CONFIG as any, outDir, path =>
-    path.replace(`${ourDirPath}/`, '')
+  await transpileAndOutputFiles(
+    tsFilePaths,
+    TS_CONFIG as any,
+    outDir,
+    (path: string) => path.replace(`${ourDirPath}/`, '')
   );
   // remove .ts files
   await removeFiles(tsFilePaths);

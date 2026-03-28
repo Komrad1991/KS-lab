@@ -2,13 +2,12 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "rootDir": ".",
-    "outDir": "./dist"
+    "outDir": "./dist",
+    "baseUrl": ".",
+    "paths": {
+      "@tinijs/cli": ["../cli/dist/public-api.d.ts"]
+    }
   },
-  "include": [
-    "**/*"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist"
-  ]
+  "include": ["**/*"],
+  "exclude": ["node_modules", "dist"]
 }

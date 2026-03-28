@@ -10,11 +10,15 @@ export interface CommandDefinition {
   name: string;
   description?: string;
   icon?: string;
-  action: (args?: Record<string, any>, abortSignal?: AbortSignal) => Promise<void> | void;
+  action: (
+    args?: Record<string, any>,
+    abortSignal?: AbortSignal
+  ) => Promise<void> | void;
   keywords?: string[];
   category?: string;
   shouldShow?: (context: any) => boolean;
   args?: CommandArgument[];
+  closeOnRun?: boolean;
 }
 
 export interface ShortcutDefinition {
